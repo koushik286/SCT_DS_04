@@ -1,0 +1,109 @@
+import pandas as pd
+import numpy as np
+
+# Set random seed for reproducibility
+np.random.seed(42)
+
+# Generate 1000 samples
+num_samples = 1000
+
+# Time of Day (0-23 hours)
+hour = np.random.randint(0, 24, num_samples)
+
+# Day of Week (0=Monday, 6=Sunday)
+day_of_week = np.random.randint(0, 7, num_samples)
+
+# Weather Condition (0=Clear, 1=Rain, 2=Fog, 3=Snow)
+weather = np.random.choice(["Clear", "Rain", "Fog", "Snow"], num_samples)
+
+# Road Condition (0=Dry, 1=Wet, 2=Icy)
+road_condition = np.random.choice(["Dry", "Wet", "Icy"], num_samples)
+
+# Speed Limit (30-120 km/h)
+speed_limit = np.random.choice([30, 50, 60, 80, 100, 120], num_samples)
+
+# Number of Vehicles Involved (1-5)
+num_vehicles = np.random.randint(1, 6, num_samples)
+
+# Accident Severity (0=Minor, 1=Severe, 2=Fatal) - based on road/weather conditions
+severity = []
+for i in range(num_samples):
+    if road_condition[i] == "Icy" or weather[i] == "Snow":
+        severity.append(np.random.choice(["Severe", "Fatal"], p=[0.6, 0.4]))
+    elif road_condition[i] == "Wet" or weather[i] == "Rain":
+        severity.append(np.random.choice(["Minor", "Severe"], p=[0.7, 0.3]))
+    else:
+        severity.append("Minor")
+
+# Create DataFrame
+df = pd.DataFrame({
+    "Hour": hour,
+    "Day_of_Week": day_of_week,
+    "Weather": weather,
+    "Road_Condition": road_condition,
+    "Speed_Limit": speed_limit,
+    "Num_Vehicles": num_vehicles,
+    "Severity": severity
+})
+
+# Display first few rows
+print(df.head())
+
+
+from sklearn.preprocessing import LabelEncoder
+
+# Encode categorical variables
+label_enc = LabelEncoder()
+df["Severity"] = label_enc.fit_transform(df["Severity"])  # "Minor"=0, "Severe"=1, "Fatal"=2
+
+# One-hot encoding for categorical columns
+df = pd.get_dummies(df, columns=["Weather", "Road_Condition"], drop_first=True)
+
+# Display processed dataset
+print(df.head())
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+
+# Define features (X) and target (y)
+X = df.drop(columns=["Severity"])
+y = df["Severity"]
+
+# Split dataset (80% train, 20% test)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# Scale numerical features
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+print(f"Training set size: {X_train.shape}, Testing set size: {X_test.shape}")
+from sklearn.tree import DecisionTreeClassifier
+
+# Initialize Decision Tree Classifier
+clf = DecisionTreeClassifier(max_depth=5, random_state=42)
+
+# Train model
+clf.fit(X_train, y_train)
+y_pred = clf.predict(X_test)
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+
+# Print accuracy
+accuracy = accuracy_score(y_test, y_pred)
+print(f"Model Accuracy: {accuracy:.2f}")
+# Print detailed classification report
+print(classification_report(y_test, y_pred))
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Plot confusion matrix
+plt.figure(figsize=(5,5))
+sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, fmt="d", cmap="Blues")
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+plt.title("Confusion Matrix")
+plt.show()
+from sklearn.tree import plot_tree
+
+plt.figure(figsize=(15, 8))
+plot_tree(clf, feature_names=X.columns, class_names=["Minor", "Severe", "Fatal"], filled=True, rounded=True)
+plt.show()
